@@ -23,15 +23,18 @@
 ### imports
 
 # external modules
-import sys
 import os
 
 # local modules
-from omsapi import OMSAPI
-from urls import API_URL, API_VERSION, API_AUDIENCE
-from clientid import API_CLIENT_ID, API_CLIENT_SECRET
+from .omsapi import OMSAPI
+from .urls import API_URL, API_VERSION, API_AUDIENCE
 
-sys.path.append(os.path.abspath("../utils/notebook_utils"))
+# from clientid import API_CLIENT_ID, API_CLIENT_SECRET
+
+API_CLIENT_ID = os.environ.get("API_CLIENT_ID")
+API_CLIENT_SECRET = os.environ.get("API_CLIENT_SECRET")
+
+# sys.path.append(os.path.abspath("../utils/notebook_utils"))
 
 ### set names of filter attributes
 

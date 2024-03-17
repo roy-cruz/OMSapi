@@ -1,9 +1,8 @@
 # local modules
-import get_oms_data
+from .get_oms_data import get_oms_data
 
 import pandas as pd
 import time
-import utils.rank_utils as rrr
 
 
 def get_runs_lss(
@@ -68,7 +67,7 @@ def download_oms_data(runs, omsapi, attribs_level, attribs=[], extrafilters=[]):
                     extrafilters=extrafilters,
                 )
 
-                oms_df = pd.concat([oms_df, rrr.makeDF(oms_json).convert_dtypes()])
+                oms_df = pd.concat([oms_df, makeDF(oms_json).convert_dtypes()])
                 time.sleep(2)
         else:
             oms_json = get_oms_data(
@@ -79,7 +78,7 @@ def download_oms_data(runs, omsapi, attribs_level, attribs=[], extrafilters=[]):
                 attributes=attribs,
                 extrafilters=extrafilters,
             )
-            oms_df = rrr.makeDF(oms_json).convert_dtypes()
+            oms_df = makeDF(oms_json).convert_dtypes()
 
         oms_df.reset_index(inplace=True)
 
@@ -112,3 +111,19 @@ def subdivide_range(oldest_run, newest_run, step=1000):
             ranges.append((start, end - 1))
 
     return ranges
+
+
+def makeDF(json):
+    # if isinstance(json, dict):
+    datadict = json["data"][0]["attributes"]
+    keys = datadict.keys()
+
+    datasetlist = []
+
+    for i in range(len(json["data"])):
+        values = json["data"][i]["attributes"].values()
+        datasetlist.append(values)
+    return pd.DataFrame(datasetlist, columns=keys)  # \
+    # elif isinstance(json, list):
+    # keys = json[0].keys()
+    # for i in range(len(json)):...
