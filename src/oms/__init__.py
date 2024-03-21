@@ -30,7 +30,6 @@ class oms_fetch:
             api_url=API_URL, api_version=API_VERSION, cert_verify=False
         )
         self.omsapi.auth_oidc(API_CLIENT_ID, API_CLIENT_SECRET, audience=API_AUDIENCE)
-
         self.last_run_query = None
         self.last_ls_query = None
 
