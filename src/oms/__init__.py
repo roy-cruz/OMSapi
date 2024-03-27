@@ -1,8 +1,8 @@
 import os
 
-from .get_oms_data import *
-from .oms_utils import *
-from .urls import API_URL, API_VERSION, API_AUDIENCE
+from oms.get_oms_data import *
+from oms.oms_utils import *
+from oms.urls import API_URL, API_VERSION, API_AUDIENCE
 
 API_CLIENT_ID = os.environ.get("API_CLIENT_ID")
 API_CLIENT_SECRET = os.environ.get("API_CLIENT_SECRET")
@@ -36,7 +36,15 @@ class oms_fetch:
     def get_last_fetch(self):
         return self.last_query
 
-    def get_oms_data(self, runs, attribs_level, attribs=[], extrafilters=[]):
+    def get_oms_data(
+        self,
+        runs,
+        attribs_level,
+        attribs=[],
+        extrafilters=[],
+        range_limit=1,
+        limit_entries=1,
+    ):
         """
         Downloads run and lumisection level metadata for a given range of runs.
 
@@ -56,8 +64,7 @@ class oms_fetch:
         """
         if isinstance(runs, int):
             runs = (runs, runs)
-
-        if isinstance(runs, tuple):
+        elif isinstance(runs, tuple):
             if attribs_level == "runs":
                 limit_entries = 5000
                 range_limit = limit_entries
@@ -67,7 +74,7 @@ class oms_fetch:
             else:
                 raise Exception("Error: Unrecognized OMS API endpoint.")
 
-        if runs[1] - runs[0] > range_limit:
+        if (runs[1] - runs[0] > range_limit) and (not isinstance(runs, list)):
             run_range_list = self.subdivide_range(runs[0], runs[1], range_limit)
             oms_df = pd.DataFrame(columns=attribs)
             for runs in run_range_list:
@@ -78,9 +85,8 @@ class oms_fetch:
                     attributes=attribs,
                     extrafilters=extrafilters,
                 )
-
                 oms_df = pd.concat([oms_df, makeDF(oms_json).convert_dtypes()])
-                time.sleep(2)
+                # time.sleep(2)
         else:
             oms_json = self.get_oms_json(
                 attribs_level,
@@ -110,6 +116,7 @@ class oms_fetch:
         attributes=[],
         limit_entries=1000,
         as_df=False,
+        quiet=True,
     ):
         """
         Fetches data from a specified OMS API endpoint applying various filters, sorting, and pagination options.
@@ -141,17 +148,22 @@ class oms_fetch:
                 + " while and OMSAPI object is expected."
                 + " You can use get_oms_api() to create this object."
             )
+
         # check runnb argument
         if runnb is None:
             pass  # special case: do not apply run number filter
-        # elif isinstance(runnb, list):
-        #     filters_lst = [0] * len(runnb)
-        #     pass
         elif isinstance(runnb, int):
             filters.append(
                 {attribute_name: "run_number", value: str(runnb), operator: "EQ"}
             )
-        elif isinstance(runnb, tuple) or isinstance(runnb, list):
+        elif isinstance(runnb, list):
+            numruns = len(runnb)
+            runnbfilters = [
+                [{"attribute_name": "run_number", value: run, operator: "EQ"}]
+                + extrafilters
+                for run in runnb
+            ]
+        elif isinstance(runnb, tuple):
             filters.append(
                 {attribute_name: "run_number", value: str(runnb[0]), operator: "GE"}
             )
@@ -177,21 +189,36 @@ class oms_fetch:
                 )
             filters.append(extrafilter)
 
-        q = self.omsapi.query(api_endpoint)
-        if len(filters) > 0:
-            q.filters(filters)
-        if sort is not None:
-            q.sort(sort)
-        if len(attributes) is not None:
-            q.attrs(attributes)
-        for key, val in extraargs.items():
-            q.custom(key, value=val)
-        q.paginate(1, limit_entries)
-        print(q.data_query())
-        response = q.data()
-        return response.json()
+        if isinstance(runnb, list):
+            jsons = {"data": []}
+            q = self.omsapi.query(api_endpoint)
+            for filt in runnbfilters:
+                q.clear_filter()
+                q.filters(filt)
+                response = q.data()
+                try:
+                    jsons["data"].append(response.json()["data"][0])
+                except:
+                    pass
+            return jsons
 
-    def subdivide_range(oldest_run, newest_run, step=1000):
+        else:
+            q = self.omsapi.query(api_endpoint)
+            if len(filters) > 0:
+                q.filters(filters)
+            if sort is not None:
+                q.sort(sort)
+            if len(attributes) is not None:
+                q.attrs(attributes)
+            for key, val in extraargs.items():
+                q.custom(key, value=val)
+            q.paginate(1, limit_entries)
+            if not quiet:
+                print(q.data_query())
+            response = q.data()
+            return response.json()
+
+    def subdivide_range(self, oldest_run, newest_run, step=1000):
         """
         Subdivide a range from x to y into sub-ranges of size 'step'.
 
