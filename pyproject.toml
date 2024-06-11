@@ -3,6 +3,10 @@ name = "omsapi"
 description = "Tools for interphasing with the OMS API"
 version = "0.0.2"
 readme = "README.md"
+authors = [
+    "Roy F. Cruz <roy.cruz.candelaria@cern.ch>",
+    "Guillermo Fidalgo <guillermo.fidalgo@upr.edu>"
+]
 repository = "https://github.com/roy-cruz/OMSapi"
 packages = [{ include = "oms", from = "src" }]
 
